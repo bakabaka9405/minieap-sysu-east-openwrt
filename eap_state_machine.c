@@ -345,11 +345,6 @@ RESULT switch_to_state(EAP_STATE state, ETH_EAP_FRAME* frame) {
 
     if (PRIV->state == state) {
         PROG_CONFIG* _cfg = get_program_config();
-        PRIV->state_last_count++;
-        if (PRIV->state_last_count == _cfg->max_retries) {
-            PR_ERR("在 %d 状态已经停留了 %d 次，达到指定次数，正在退出……", PRIV->state, _cfg->max_retries);
-            exit(EXIT_FAILURE);
-        }
     } else {
         /*
          * Reset watchdog before calling trans func

@@ -1,5 +1,52 @@
+# MiniEAP in SYSU East for OpenWrt
+
+为中山大学东校园有线网魔改的 MiniEAP，运行在 OpenWrt 上。仅在 AX6S 和极路由 4 上进行过测试，不保证稳定性和时效性。
+
+对原版的修改仅为移除`eap_state_machine.c`中状态机的状态停留次数限制，抓包分析可知中山大学东校园锐捷认证的心跳包形式为服务器每隔 30s 向客户端发送一次用户名请求，而不是常见的客户端定期向服务器主动发送心跳包。这种不常见的形式会让 MiniEAP 程序状态机认为自身正处于认证前循环而直接退出，故作此修改。认证算法上和原版无区别。
+
+要交叉编译并在 OpenWrt 上部署，可以按以下步骤进行：
+
+1. 交叉编译在 Linux 上进行
+2. 下载你的路由器对应架构的 OpenWrt SDK
+3. 配置好`PATH`和`STAGING_DIR`
+4. 交叉编译 libpcap 得到`libpcap.a`
+5. 修改该 repo 中的`config.mk`文件，分别在`CUSTOM_CFLAGS`和`CUSTOM_LIBS`配置好 libpcap 的 include 目录和`libpcap.a`路径
+6. 交叉编译 MiniEAP 得到可执行文件
+7. 通过 ssh 或其他方法将可执行文件上传到 OpenWrt，并赋予执行权限
+
+如果出现编译失败或运行时出现乱码等现象，请参考原版编译指引。
+
+启动指令参考：
+
+```bash
+./minieap -k 1 -u username -p password -n wan -b 3 --save --module rjv3 --fake-dns2 114.114.114.114 --fake-serial fakeserial --if-impl libpcap -t 3000000
+```
+
+请自行修改`username`，`password`，`fakeserial`字段，前两个字段作用显然，`fakeserial`理论上随便填？但是似乎不能不填，原因费解。如果路由器的 wan 口名称不是`wan`，也需要修改。
+
+`-t 3000000`的作用是将本机发送心跳包的间隔调成尽可能大，因为本机无需主动发送心跳包。也可以直接修改源代码关闭心跳包逻辑，但是太懒了（
+
+没有做成 ipk 包，同样是因为懒。
+
+`-k 1` 的作用是杀死其他正在运行的 MiniEAP 程序并且继续执行本程序。
+
+`-b 3`的作用是让 MiniEAP 在后台运行，如果是为了调试可以删去。后台运行时要查看 MiniEAP 的输出，可以使用以下指令：
+
+```bash
+cat /var/log/minieap.log
+```
+
+初次运行时可能会卡在寻找服务器的阶段，可能需要多执行几次。成功认证的特征为输出“认证成功”字样，之后每隔半分钟输出一次“正在回应用户名请求"。
+
+偶尔断连是正常现象，你鸭破网就这b样。~~不过这学期好多了~~
+
+以下为原版 README：
+
 MiniEAP
 =======
+
+
+
 
 这是一个实现了标准 EAP-MD5-Challenge 算法的 EAP 客户端，支持通过插件来修改标准数据包以通过特殊服务端的认证。目前带有一个实现锐捷 v3 (v4) 算法的插件。本插件的认证算法来自 [Hu Yunrui 的 MentoHUST 项目](https://github.com/hyrathb/mentohust)，在此表示感谢！
 
